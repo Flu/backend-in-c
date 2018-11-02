@@ -28,3 +28,7 @@
 *.app
 
 showip
+
+\.vscode/settings\.json
+
+server
