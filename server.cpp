@@ -1,18 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-
-#define DEFAULT_PORT 2000
-#define BACKLOG 20
-#define MAX_BUFFER_SIZE 1000
+#include "server.hpp"
 
 int main(int argc, char** argv) {
-	printf("[] Starting webserver on port 2000 \n");
+	std::cout << "[] Starting webserver on port 2000" << std::endl;
 	struct sockaddr_storage incomingAddress;
 	socklen_t addressSize;
 	struct addrinfo hints, *res;
@@ -24,46 +13,41 @@ int main(int argc, char** argv) {
 	hints.ai_socktype = SOCK_STREAM; // TCP connections
 
 	if ((status = getaddrinfo("192.168.1.30", "2000", &hints, &res)) == -1) {
-		fprintf(stderr, "An error occured when looking for this IP address:\n %s \n", gai_strerror(status));
-		fflush(stderr);
-		return 1;
+		throw gai_strerror(status);
 	}
-	printf("[] Opened new socket on %s\n", res->ai_addr);
+	std::cout << "[] Opened new socket on " << res->ai_addr << std::endl;
 
 	// Making a socket, bind it and listen on it
 
 	if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1) { // Socket file descriptor
-		fprintf(stderr, "An error occured while getting the socket file descriptor\n");
-		return 2;
+		throw "An error occured while getting the socket file descriptor";
 	}
-	printf("[] Got the socket file descriptor\n");
+	std::cout << "[] Got the socket file descriptor" << std::endl;
 
 	bind(sockfd, res->ai_addr, res->ai_addrlen); // Bind socket to port
 
-	char* buffer = (char*)malloc(MAX_BUFFER_SIZE*sizeof(char));
+	char* buffer = new char[MAX_BUFFER_SIZE];
 
-	while (1) {
+	while (true) {
 		listen(sockfd, BACKLOG);
 
 		addressSize = sizeof(incomingAddress);
 		newSockfd = accept(sockfd, (struct sockaddr*)&incomingAddress, &addressSize);
 		if (newSockfd == -1) {
-			fprintf(stderr, "An error occured when accepting an incoming connection\n");
-			return 3;
+			throw "An error occured when accepting an incoming connection";
 		}
-		printf("Incoming connection accepted\n");
+		std::cout << "Incoming connection accepted" << std::endl;
 	
 		// Now we have a new socket file descriptor, newSockfd that will be used for receiving requests
 		if (recv(newSockfd, buffer, MAX_BUFFER_SIZE*sizeof(char), 0) == -1) {
-			fprintf(stderr, "Error when receiving request\n");
-			return 4;
+			throw "Error when receiving request";
 		}
-		printf("Request: %s\n", buffer);
-		printf("From address: %s\n", (struct sockaddr*)&incomingAddress);
+		std::cout << "Request: " << buffer << std::endl;
+		std::cout << "From address: " << (struct sockaddr*)&incomingAddress << std::endl;
 	}
 
-	free(buffer);
+	delete[] buffer;
 	freeaddrinfo(res);
-	printf("[] Closing server\n");
+	std::cout << "[] Closing server" << std::endl;
 	return 0;
 }
