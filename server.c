@@ -9,6 +9,7 @@
 
 #define DEFAULT_PORT 2000
 #define BACKLOG 20
+#define MAX_BUFFER_SIZE 1000
 
 int main(int argc, char** argv) {
 	printf("[] Starting webserver on port 2000 \n");
@@ -39,6 +40,7 @@ int main(int argc, char** argv) {
 
 	bind(sockfd, res->ai_addr, res->ai_addrlen); // Bind socket to port
 
+	char* buffer = (char*)malloc(MAX_BUFFER_SIZE*sizeof(char));
 
 	while (1) {
 		listen(sockfd, BACKLOG);
