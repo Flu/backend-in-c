@@ -38,27 +38,30 @@ int main(int argc, char** argv) {
 	printf("[] Got the socket file descriptor\n");
 
 	bind(sockfd, res->ai_addr, res->ai_addrlen); // Bind socket to port
-	listen(sockfd, BACKLOG);
 
-	addressSize = sizeof(incomingAddress);
-	newSockfd = accept(sockfd, (struct sockaddr*)&incomingAddress, &addressSize);
-	if (newSockfd == -1) {
-		fprintf(stderr, "An error occured when accepting an incoming connection\n");
-		return 3;
-	}
-	printf("Incoming connection accepted\n");
+
+	while (1) {
+		listen(sockfd, BACKLOG);
+
+		addressSize = sizeof(incomingAddress);
+		newSockfd = accept(sockfd, (struct sockaddr*)&incomingAddress, &addressSize);
+		if (newSockfd == -1) {
+			fprintf(stderr, "An error occured when accepting an incoming connection\n");
+			return 3;
+		}
+		printf("Incoming connection accepted\n");
 	
-	// Now we have a new socket file descriptor, newSockfd that will be used for receiving requests
-
-	char* buffer = (char*)malloc(50*sizeof(char));
-	if (recv(newSockfd, buffer, 50*sizeof(char), 0) == -1) {
-		fprintf(stderr, "Error when receiving request\n");
-		return 4;
+		// Now we have a new socket file descriptor, newSockfd that will be used for receiving requests
+		if (recv(newSockfd, buffer, MAX_BUFFER_SIZE*sizeof(char), 0) == -1) {
+			fprintf(stderr, "Error when receiving request\n");
+			return 4;
+		}
+		printf("Request: %s\n", buffer);
+		printf("From address: %s\n", (struct sockaddr*)&incomingAddress);
 	}
-	printf("Request: %s\n", buffer);
 
-	freeaddrinfo(res);
 	free(buffer);
+	freeaddrinfo(res);
 	printf("[] Closing server\n");
 	return 0;
 }
