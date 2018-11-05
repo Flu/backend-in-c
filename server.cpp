@@ -40,6 +40,7 @@ int main(int argc, char** argv) {
 		std::cerr << exc << std::endl;
 		std::cerr << strerror(errno) << std::endl;
 	}
+	freeaddrinfo(res);
 	char* buffer = new char[MAX_BUFFER_SIZE];
 
 	while (true) {
@@ -51,26 +52,36 @@ int main(int argc, char** argv) {
 			throw "An error occured when accepting an incoming connection";
 		}
 		std::cout << "Incoming connection accepted" << std::endl;
-	
-		// Now we have a new socket file descriptor, newSockfd that will be used for receiving requests
-		if (recv(newSockfd, buffer, MAX_BUFFER_SIZE*sizeof(char), 0) == -1) {
-			throw "Error when receiving request";
-		}
-		std::cout << "Request: " << buffer << std::endl;
 
-		char* incomingAddressString = new char[INET_ADDRSTRLEN];
-		inet_ntop(incomingAddress.ss_family, get_in_addr((struct sockaddr *)&incomingAddress),
-			incomingAddressString, sizeof incomingAddressString);
-		std::cout << "From address: " << incomingAddressString << std::endl;
+		int forkStatus;
+		if ((forkStatus = fork()) == -1)
+			throw strerror(errno);
 
-		delete[] incomingAddressString;
+		if (forkStatus > 0) { // Child process
+			close(sockfd); // Doesn't need listener socket
+
+			// Now we have a new socket file descriptor, newSockfd that will be used for receiving requests
+			if (recv(newSockfd, buffer, MAX_BUFFER_SIZE*sizeof(char), 0) == -1) {
+				throw "Error when receiving request";
+			}
+			std::cout << "Request: " << buffer << std::endl;
+
+			char* incomingAddressString = new char[INET_ADDRSTRLEN];
+			inet_ntop(incomingAddress.ss_family, get_in_addr((struct sockaddr *)&incomingAddress),
+				incomingAddressString, sizeof incomingAddressString);
+			std::cout << "From address: " << incomingAddressString << std::endl;
+
+			delete[] incomingAddressString;
+			close(newSockfd);
+			exit(EXIT_SUCCESS);
+		} 
+		// Parent process
 		close(newSockfd);
 	}
 
 	delete[] buffer;
-	freeaddrinfo(res);
 	close(sockfd);
 	std::cout << "[] Closing server" << std::endl;
-	
+
 	return 0;
 }
