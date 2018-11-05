@@ -1,5 +1,12 @@
 #include "server.hpp"
 
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+	  return &(((struct sockaddr_in*)sa)->sin_addr);
+  }
+  return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
 int main(int argc, char** argv) {
 	std::cout << "[] Starting webserver on port " << DEFAULT_PORT << std::endl;
 	struct sockaddr_storage incomingAddress;
@@ -25,8 +32,10 @@ int main(int argc, char** argv) {
 	std::cout << "[] Got the socket file descriptor" << std::endl;
 
 	try {
-		if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1)
+		if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
+			close(sockfd);
 			throw "Couldn't bind socket to port, try again"; // Bind socket to port
+		}
 	} catch (const char* exc) {
 		std::cerr << exc << std::endl;
 		std::cerr << strerror(errno) << std::endl;
@@ -49,8 +58,9 @@ int main(int argc, char** argv) {
 		}
 		std::cout << "Request: " << buffer << std::endl;
 
-		char* incomingAddressString = new char[INET6_ADDRSTRLEN];
-		inet_ntop(res->ai_family, &incomingAddress, incomingAddressString, sizeof(incomingAddressString));
+		char* incomingAddressString = new char[INET_ADDRSTRLEN];
+		inet_ntop(incomingAddress.ss_family, get_in_addr((struct sockaddr *)&incomingAddress),
+			incomingAddressString, sizeof incomingAddressString);
 		std::cout << "From address: " << incomingAddressString << std::endl;
 
 		delete[] incomingAddressString;
