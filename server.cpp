@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
 	hints.ai_family = AF_UNSPEC; // Either IPv4 or IPv6
 	hints.ai_socktype = SOCK_STREAM; // TCP connections
 
-	if ((status = getaddrinfo("0.0.0.0", DEFAULT_PORT, &hints, &res)) == -1) {
+	if ((status = getaddrinfo("192.168.1.30", DEFAULT_PORT, &hints, &res)) == -1) {
 		throw gai_strerror(status);
 	}
 	std::cout << "[] Opened new socket on " << res->ai_addr << std::endl;
@@ -46,14 +46,9 @@ int main(int argc, char** argv) {
 	if (listen(sockfd, BACKLOG) == -1)
 		throw "Invalid socket";
 
-	int i = 0;
 	while (true) {
-		std::cout << ++i << std::endl;
-
 		addressSize = sizeof(incomingAddress);
 		newSockfd = accept(sockfd, (struct sockaddr*)&incomingAddress, &addressSize);
-
-		std::cout << "Acceptare " << i << std::endl;
 
 		if (newSockfd == -1) {
 			throw "An error occured when accepting an incoming connection";
@@ -64,7 +59,7 @@ int main(int argc, char** argv) {
 		if ((forkStatus = fork()) == -1)
 			throw strerror(errno);
 
-		if (forkStatus > 0) { // Child process
+		if (forkStatus == 0) { // Child process
 			std::cout << "This is coming from the child" << std::endl;
 			close(sockfd); // Doesn't need listener socket
 
@@ -79,18 +74,22 @@ int main(int argc, char** argv) {
 				incomingAddressString, sizeof incomingAddressString);
 			std::cout << "From address: " << incomingAddressString << std::endl;
 
+			if (send(newSockfd, "Hello, world!", 13, 0) == -1)
+        throw "Send did not occurr for some reason";
+
 			delete[] incomingAddressString;
 			close(newSockfd);
 			exit(EXIT_SUCCESS);
 		} 
 		// Parent process
-		std::cout << "[x]This is coming from the parent, closing the new connection" << std::endl;
+		wait(NULL);
+		std::cout << "[X] This is coming from the parent, closing the new connection" << std::endl;
 		close(newSockfd);
 	}
 
 	delete[] buffer;
 	close(sockfd);
-	std::cout << "[] Closing server" << std::endl;
+	std::cout << "[X] Closing server" << std::endl;
 
 	return 0;
 }
