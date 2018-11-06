@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
 	hints.ai_family = AF_UNSPEC; // Either IPv4 or IPv6
 	hints.ai_socktype = SOCK_STREAM; // TCP connections
 
-	if ((status = getaddrinfo("192.168.1.30", DEFAULT_PORT, &hints, &res)) == -1) {
+	if ((status = getaddrinfo("0.0.0.0", DEFAULT_PORT, &hints, &res)) == -1) {
 		throw gai_strerror(status);
 	}
 	std::cout << "[] Opened new socket on " << res->ai_addr << std::endl;
@@ -43,21 +43,29 @@ int main(int argc, char** argv) {
 	freeaddrinfo(res);
 	char* buffer = new char[MAX_BUFFER_SIZE];
 
+	if (listen(sockfd, BACKLOG) == -1)
+		throw "Invalid socket";
+
+	int i = 0;
 	while (true) {
-		listen(sockfd, BACKLOG);
+		std::cout << ++i << std::endl;
 
 		addressSize = sizeof(incomingAddress);
 		newSockfd = accept(sockfd, (struct sockaddr*)&incomingAddress, &addressSize);
+
+		std::cout << "Acceptare " << i << std::endl;
+
 		if (newSockfd == -1) {
 			throw "An error occured when accepting an incoming connection";
 		}
 		std::cout << "Incoming connection accepted" << std::endl;
 
-		int forkStatus;
+		pid_t forkStatus;
 		if ((forkStatus = fork()) == -1)
 			throw strerror(errno);
 
 		if (forkStatus > 0) { // Child process
+			std::cout << "This is coming from the child" << std::endl;
 			close(sockfd); // Doesn't need listener socket
 
 			// Now we have a new socket file descriptor, newSockfd that will be used for receiving requests
@@ -66,7 +74,7 @@ int main(int argc, char** argv) {
 			}
 			std::cout << "Request: " << buffer << std::endl;
 
-			char* incomingAddressString = new char[INET_ADDRSTRLEN];
+			char* incomingAddressString = new char[INET6_ADDRSTRLEN];
 			inet_ntop(incomingAddress.ss_family, get_in_addr((struct sockaddr *)&incomingAddress),
 				incomingAddressString, sizeof incomingAddressString);
 			std::cout << "From address: " << incomingAddressString << std::endl;
@@ -76,6 +84,7 @@ int main(int argc, char** argv) {
 			exit(EXIT_SUCCESS);
 		} 
 		// Parent process
+		std::cout << "[x]This is coming from the parent, closing the new connection" << std::endl;
 		close(newSockfd);
 	}
 

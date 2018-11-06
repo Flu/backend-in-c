@@ -15,7 +15,7 @@
 #include <signal.h>
 
 #define DEFAULT_PORT "2000"
-#define BACKLOG 20
+#define BACKLOG 5
 #define MAX_BUFFER_SIZE 1000
 
 class Server {
