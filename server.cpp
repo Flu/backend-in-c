@@ -1,10 +1,17 @@
 #include "server.hpp"
 
+volatile sig_atomic_t interrupted = 0;
+
 void *get_in_addr(struct sockaddr *sa) {
   if (sa->sa_family == AF_INET) {
 	  return &(((struct sockaddr_in*)sa)->sin_addr);
   }
   return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+void sig_action_handler(int signum) {
+	wait(NULL);
+	interrupted = 1;
 }
 
 int main(int argc, char** argv) {
@@ -46,7 +53,12 @@ int main(int argc, char** argv) {
 	if (listen(sockfd, BACKLOG) == -1)
 		throw "Invalid socket";
 
-	while (true) {
+	struct sigaction catcher;
+	memset(&catcher, 0, sizeof (catcher));
+	catcher.sa_handler = sig_action_handler;
+	sigaction(SIGINT, &catcher, NULL);
+
+	while (!interrupted) {
 		addressSize = sizeof(incomingAddress);
 		newSockfd = accept(sockfd, (struct sockaddr*)&incomingAddress, &addressSize);
 
@@ -75,14 +87,13 @@ int main(int argc, char** argv) {
 			std::cout << "From address: " << incomingAddressString << std::endl;
 
 			if (send(newSockfd, "Hello, world!", 13, 0) == -1)
-        throw "Send did not occurr for some reason";
+        throw "Send did not occur for some reason";
 
 			delete[] incomingAddressString;
 			close(newSockfd);
 			exit(EXIT_SUCCESS);
 		} 
 		// Parent process
-		wait(NULL);
 		std::cout << "[X] This is coming from the parent, closing the new connection" << std::endl;
 		close(newSockfd);
 	}
